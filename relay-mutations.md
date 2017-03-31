@@ -19,9 +19,14 @@ In GraphQL, a _mutation_ is the only way to create, update or delete data on the
 As an example, creating a new Pokemon in our sample app uses the following mutation:
 
 ```graphql
-mutation CreatePokemonMutation($name: String!, $url: String!) {
-  createPokemon(name: $name, url: $url) {
-    id # will be returned by the server
+mutation CreatePokemon($name: String!, $url: String!) {
+  createPokemon(input: {
+    name: $name,
+    url: $url
+  }) {
+    pokemon {
+      id # will be returned by the server
+    }
   }
 }
 ```
