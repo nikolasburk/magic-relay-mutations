@@ -1,4 +1,4 @@
-# The Magic Behind Relay Mutations
+# The Magic behind Relay Mutations
 
 [Relay](https://facebook.github.io/relay/) is a powerful GraphQL client for React and React Native applications. It was open sourced by Facebook alongside GraphQL in 2015 and basically takes care of anything that concerns an app's data layer.
 
