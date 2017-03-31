@@ -2,13 +2,15 @@
 
 [Relay](https://facebook.github.io/relay/) is a powerful GraphQL client for React and React Native applications. It was open sourced by Facebook alongside GraphQL in 2015 and basically takes care of anything that concerns an app's data layer.
 
-In this post, we are going to explore how Relay mutations work by the example of a React Native app - check out the code on [GitHub]() (TODO) if you like. The sample application is a simple Pokedex app, where users can manage their Pokemons.
+In this post, we are going to explore how Relay mutations work by the example of a React Native app - check out the code on [GitHub](https://github.com/graphcool-examples/react-native-relay-pokedex-example) if you like. The sample application is a simple Pokedex app, where users can manage their Pokemons.
 
 ![](http://i.imgur.com/S21GfEo.png)
 
-> Note: We're going to assume a basic familiarity with GraphQL in this article. If you haven't heard of GraphQL before, the [documentation](www.graphql.org) is a great place to start. If you're interested in learning more about Relay in general, head over to [Learn Relay](www.learnrelay.org) for a comprehensive tutorial.
+> Note: We're going to assume a basic familiarity with GraphQL in this article. If you haven't heard of GraphQL before, the [documentation](www.graphql.org) or the [GraphQL for iOS Developers](http://artsy.github.io/blog/2016/06/19/graphql-for-mobile/) post are great places to start. If you're interested in learning more about Relay in general, head over to [Learn Relay](www.learnrelay.org) for a comprehensive tutorial.
 
 If you want to run the example with your own GraphQL server, you can use [graphql-up](https://www.graph.cool/graphql-up/) to quickly spin one up yourself.
+
+[![graphql-up](http://static.graph.cool/images/graphql-up.svg)](https://www.graph.cool/graphql-up/new?source=https://raw.githubusercontent.com/graphcool-examples/react-native-relay-pokedex-example/master/pokedex.schema)
 
 ## Recap: Mutations
 
@@ -48,7 +50,7 @@ fragment PokemonDetails on Node {
   }
 }
 ```
-Note that the `id` is required to perform and update or deletion, so it's requested as well.
+Note that the `id` is required to perform an update or deletion, so it's requested as well.
 
 These fragments are usually kept in the same file as the React component, so UI and data requirements are _colocated_. Relay then uses a [higher-order component](https://facebook.github.io/react/docs/higher-order-components.html) called [`Relay.Container`](https://facebook.github.io/relay/docs/guides-containers.html#content), to wrap the component along with its data requirements - from this point the developer doesn't have to worry about the data any more! It will be fetched behind the scenes and is made available to the component through its props.
 
@@ -114,11 +116,11 @@ In the following, we'll take a deeper look at the mutations in our sample app, w
 
 Let's walk through the different methods and understand what information we have to provide so that Relay can successfully merge the newly created Pokemon into its store.
 
-The first two methods, `getMutation()` and `getFragment()` are relatively obvious and can be retrieved directly from the documentation where the API is described.
+The first two methods, `getMutation()` and `getVariables()` are relatively obvious and can be retrieved directly from the documentation where the API is described.
 
 The implementations look as follows:
 
-```js
+```
   getMutation() {
     return Relay.QL`mutation {createPokemon}`
   }
@@ -136,7 +138,7 @@ Notice that the `props` of a `Relay.Mutation` are passed to it through its const
 
 Now, on to the interesting parts. In `getFatQuery()`, we need to specify the parts that might change due to the mutation. Here, we simply specify the `viewer`:
 
-```js
+```
 getFatQuery() {
   return Relay.QL`
     fragment on CreatePokemonPayload {
@@ -152,7 +154,7 @@ Notice that _all_ subfields of `allPokemons` are also automatically included wit
 
 Finally, in `getConfigs()`, we need to specify the [mutator configurations](https://facebook.github.io/relay/docs/guides-mutations.html#mutator-configuration), telling Relay exactly how the new data should be incorporated into the cache:
 
-```js
+```
 getConfigs() {
   return [{
     type: 'RANGE_ADD',
@@ -167,13 +169,13 @@ getConfigs() {
 }
 ```
 
-We first express that we want to _add_ the node using `RANGE_ADD` for the `type` (here are 5 different types in total). 
+We first express that we want to _add_ the node using `RANGE_ADD` for the `type` (there are 5 different types in total). 
 
 Relay internally represents the stored data as a graph, so the remaining information expresses where exactly the new node should be hooked into the existing structure.
 
 Let's consider the shape of the data before we move on:
 
-```graphql
+```
 viewer {
   allPokemons {
     edges {
@@ -192,7 +194,7 @@ The last piece, `rangeBehaviors`, specifies whether we want to _append_ or _prep
 
 Sending the mutation is as simple as calling `commitUpdate` on the `relay` prop that is injected to each component that is wrapped with a `Relay.Container`:
 
-```js
+```
 _sendCreatePokemonMutation = () => {
   const createPokemonMutation = new CreatePokemonMutation({
     viewerId: this.props.viewer.id,
@@ -207,7 +209,7 @@ _sendCreatePokemonMutation = () => {
 
 Like with creating a Pokemon, `getMutation()` and `getVariables()` are trivial to implement and can be derived directly from the documentation:
 
-```js
+```
 getMutation() {
   return Relay.QL`mutation {updatePokemon}`
 }
@@ -224,7 +226,7 @@ getVariables() {
 
 In `getFatQuery()`, we only include the `pokemon` which includes the updated info this time, since that is the only part we expect to change after our mutation:
 
-```js
+```
 getFatQuery() {
   return Relay.QL`
     fragment on UpdatePokemonPayload {
@@ -236,7 +238,7 @@ getFatQuery() {
 
 Finally, `getConfigs()`, this time specifies a mutator configuration of type `FIELDS_CHANGE` since we're only updating properties on a single Pokemon:
 
-```js
+```
 getConfigs() {
   return [{
     type: 'FIELDS_CHANGE',
@@ -254,7 +256,7 @@ As only additional piece of info, we declare the ID of the Pokemon that is being
 
 As before, `getMutation()` and `getVariables()` are self-explanatory:
 
-```js
+```
 getMutation() {
   return Relay.QL`mutation { deletePokemon }`
 }
@@ -268,7 +270,7 @@ getVariables() {
 
 Then, in `getFatQuery()`, we need to retrieve the `pokemon` from the mutation payload:
 
-```js
+```
 getFatQuery() {
   return Relay.QL`
     fragment on DeletePokemonPayload {
@@ -280,7 +282,7 @@ getFatQuery() {
 
 In `getConfigs()`, we're getting to know another mutator configuration type called `NODE_DELETE`. This one requires a `parentName` as well as a `connectionName`, both coming from the mutation payload and specifying where that node existed in Relay's data graph. Another requirement, that is specifically relevant for the implementation of a GraphQL server, is that the mutation payload of a deleting mutation always needs to return the `id` of the node that was deleted so that Relay can find that node in its store. Taking all of this together, our implementation of `getConfigs()` can be written like so:
 
-```js
+```
 getConfigs() {
   return [{
     type: 'NODE_DELETE',
@@ -290,4 +292,3 @@ getConfigs() {
   }]
 }
 ```
-
