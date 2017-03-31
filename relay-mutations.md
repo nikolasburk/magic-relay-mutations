@@ -2,6 +2,8 @@
 
 [Relay](https://facebook.github.io/relay/) is a powerful GraphQL client for React and React Native applications. It was open sourced by Facebook alongside GraphQL in 2015 and basically takes care of anything that concerns an app's data layer.
 
+> TODO: "an app's data layer" - that's not true, there is quite a bit of data that could live in redux and not be managed by relay
+
 In this post, we are going to explore how Relay mutations work by the example of a React Native app - check out the code on [GitHub](https://github.com/graphcool-examples/react-native-relay-pokedex-example) if you like. The sample application is a simple Pokedex app, where users can manage their Pokemons.
 
 ![](http://i.imgur.com/S21GfEo.png)
@@ -36,9 +38,9 @@ Notice that mutations, similar to queries, also require a _payload_ to be specif
 
 ## Relay - A brief Overview
 
-Relay is the most sophisticated GraphQL client available at the moment. Like GraphQL, it has been used internally by Facebook for a while before being open sourced.
+Relay is the most sophisticated GraphQL client available at the moment. Like GraphQL, it has been used and battletested internally by Facebook for many years before it was open sourced.
 
-Relay surely isn't the easiest framework to learn (even the Relay team says so), but when used correctly, it manages the whole data layer for you in a consistent and reliable manner. It therefore is particularly well suited for large-scale and complex applications and ensures long-term developer productivity in these contexts.
+Relay surely isn't the easiest framework to learn, but when used correctly, it manages the whole data layer for you in a consistent and reliable manner. It therefore is particularly well-suited for large-scale and complex applications providing fantastic long-term developer productivity in these contexts.
 
 ### Declarative API and Colocation
 
@@ -57,12 +59,14 @@ fragment PokemonDetails on Node {
 ```
 Note that the `id` is required to perform an update or deletion, so it's requested as well.
 
+> TODO: the id field should be required in the fragment of the mutation and not in the react component
+
 These fragments are usually kept in the same file as the React component, so UI and data requirements are _colocated_. Relay then uses a [higher-order component](https://facebook.github.io/react/docs/higher-order-components.html) called [`Relay.Container`](https://facebook.github.io/relay/docs/guides-containers.html#content), to wrap the component along with its data requirements - from this point the developer doesn't have to worry about the data any more! It will be fetched behind the scenes and is made available to the component through its props.
 
 
 ### Data Masking
 
-Another core concept of Relay is [data masking](https://facebook.github.io/relay/docs/thinking-in-relay.html#data-masking), which means that any component will only ever have access to the data that it explicitly requests in a fragment. The data requirements are passed upwards through the component tree, where at the top they're combined a in a _root query_. Relay also makes sure that only data that has not been requested before is being fetched, so there is a lot of optimizations happening to ensure excellent performance and minimal data transfer over the network.
+Another core concept of Relay is [data masking](https://facebook.github.io/relay/docs/thinking-in-relay.html#data-masking), which means that any component will only ever have access to the data that it explicitly requests in a co-located fragment. The data requirements are passed upwards through the component tree, where at the top they're combined a in a _root query_. Relay also makes sure that only data that has not been requested before is being fetched, so there is a lot of optimizations happening to ensure excellent performance and minimal data transfer over the network.
 
 Consider the example of the `PokemonList` and the `PokemonItem` (representing a single item, or _cell_ in the list):
 
@@ -102,7 +106,7 @@ Despite the fact that the `PokemonList` indirectly requests the Pokemons' `id`, 
 
 ## Relay Mutations
 
-Relay doesn't give the developer the ability to manually modify the data that it stores internally. Instead, with every change, it requires a _description_ of how the local cache should be updated after the change happened in the form of a [mutation](https://facebook.github.io/relay/docs/guides-mutations.html#content) and then takes care of the update itself.
+Relay doesn't (yet) give the developer the ability to manually modify the data that it stores internally. Instead, with every change, it requires a _description_ of how the local cache should be updated after the change happened in the form of a [mutation](https://facebook.github.io/relay/docs/guides-mutations.html#content) and then takes care of the update itself.
 
 The description is provided by subclassing `Relay.Mutation` and implementing (at least) four abstract methods that help Relay to properly update the local store:
 
@@ -131,15 +135,14 @@ The implementations look as follows:
   }
 
   getVariables() {
-    const {pokemonName, pokemonUrl} = this.props 
     return {
-      name: pokemonName,
-      url: pokemonUrl
+      name: this.props.name,
+      url: this.props.url,
     }
   }
 ```
 
-Notice that the `props` of a `Relay.Mutation` are passed to it through its constructor. Here, we simply provide the `name` and the `url` of the Pokemon that is to be created.
+Notice that the `props` of a `Relay.Mutation` are passed through its constructor. Here, we simply provide the `name` and the `url` of the Pokemon that is to be created.
 
 Now, on to the interesting parts. In `getFatQuery()`, we need to specify the parts that might change due to the mutation. Here, we simply specify the `viewer`:
 
@@ -155,9 +158,9 @@ getFatQuery() {
 }
 ```
 
-Notice that _all_ subfields of `allPokemons` are also automatically included with this approach. `allPokemons` really is the only point we expect to change after our mutation is performed.
+Notice that _every_ subfield of `allPokemons` is also automatically included with this approach. In our example app, `allPokemons` is the only point we expect to change after our mutation is performed.
 
-Finally, in `getConfigs()`, we need to specify the [mutator configurations](https://facebook.github.io/relay/docs/guides-mutations.html#mutator-configuration), telling Relay exactly how the new data should be incorporated into the cache:
+Finally, in `getConfigs()`, we need to specify the [mutator configurations](https://facebook.github.io/relay/docs/guides-mutations.html#mutator-configuration), telling Relay exactly how the new data should be incorporated into the cache. This is where the magic happens:
 
 ```
 getConfigs() {
@@ -197,14 +200,14 @@ Here we clearly see the direct connection between `viewer` and the Pokemons goes
 
 The last piece, `rangeBehaviors`, specifies whether we want to _append_ or _prepend_ the new node.
 
-Sending the mutation is as simple as calling `commitUpdate` on the `relay` prop that is injected to each component that is wrapped with a `Relay.Container`:
+Executing the mutation is as simple as calling `commitUpdate` on the `relay` prop that is injected to each component that is wrapped with a `Relay.Container`:
 
 ```
 _sendCreatePokemonMutation = () => {
   const createPokemonMutation = new CreatePokemonMutation({
     viewerId: this.props.viewer.id,
-    pokemonName: this.state.pokemonName,
-    pokemonUrl: this.state.pokemonUrl,
+    name: this.state.pokemonName,
+    url: this.state.pokemonUrl,
   })
   this.props.relay.commitUpdate(createPokemonMutation)
 }
@@ -220,11 +223,10 @@ getMutation() {
 }
 
 getVariables() {
-  const {pokemonId, pokemonName, pokemonUrl} = this.props
   return {
-    id: pokemonId,
-    name: pokemonName,
-    url: pokemonUrl
+    id: this.props.id,
+    name: this.props.name,
+    url: this.props.url,
   }
 }
 ```
@@ -248,7 +250,7 @@ getConfigs() {
   return [{
     type: 'FIELDS_CHANGE',
     fieldIDs: {
-      pokemon: this.props.pokemonId,
+      pokemon: this.props.id,
     }
   }]
 }
@@ -268,7 +270,7 @@ getMutation() {
 
 getVariables() {
   return {
-    id: this.props.pokemonId,
+    id: this.props.id,
   }
 }
 ```
@@ -297,3 +299,5 @@ getConfigs() {
   }]
 }
 ```
+
+> TODO: conclusion + outro
