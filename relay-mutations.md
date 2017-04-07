@@ -2,13 +2,15 @@
 
 [Relay](https://facebook.github.io/relay/) is a powerful GraphQL client for React and React Native applications. It was open sourced by Facebook alongside GraphQL in 2015 and basically takes care of anything that concerns an app's data layer.
 
-In this post, we are going to explore how Relay mutations work by the example of a React Native app - check out the code on [GitHub]() (TODO) if you like. The sample application is a simple Pokedex app, where users can manage their Pokemons.
+In this post, we are going to explore how Relay mutations work by the example of a React Native app - check out the code on [GitHub](https://github.com/graphcool-examples/react-native-relay-pokedex-example) if you like. The sample application is a simple Pokedex app, where users can manage their Pokemons.
 
 ![](http://i.imgur.com/S21GfEo.png)
 
-> Note: We're going to assume a basic familiarity with GraphQL in this article. If you haven't heard of GraphQL before, the [documentation](www.graphql.org) is a great place to start. If you're interested in learning more about Relay in general, head over to [Learn Relay](www.learnrelay.org) for a comprehensive tutorial.
+> Note: We're going to assume a basic familiarity with GraphQL in this article. If you haven't heard of GraphQL before, the [documentation](www.graphql.org) or the [GraphQL for iOS Developers](http://artsy.github.io/blog/2016/06/19/graphql-for-mobile/) post are great places to start. If you're interested in learning more about Relay in general, head over to [Learn Relay](www.learnrelay.org) for a comprehensive tutorial.
 
 If you want to run the example with your own GraphQL server, you can use [graphql-up](https://www.graph.cool/graphql-up/) to quickly spin one up yourself.
+
+[![graphql-up](http://static.graph.cool/images/graphql-up.svg)](https://www.graph.cool/graphql-up/new?source=https://raw.githubusercontent.com/graphcool-examples/react-native-relay-pokedex-example/master/pokedex.schema)
 
 ## Recap: Mutations
 
@@ -48,7 +50,7 @@ fragment PokemonDetails on Node {
   }
 }
 ```
-Note that the `id` is required to perform and update or deletion, so it's requested as well.
+Note that the `id` is required to perform an update or deletion, so it's requested as well.
 
 These fragments are usually kept in the same file as the React component, so UI and data requirements are _colocated_. Relay then uses a [higher-order component](https://facebook.github.io/react/docs/higher-order-components.html) called [`Relay.Container`](https://facebook.github.io/relay/docs/guides-containers.html#content), to wrap the component along with its data requirements - from this point the developer doesn't have to worry about the data any more! It will be fetched behind the scenes and is made available to the component through its props.
 
@@ -114,7 +116,7 @@ In the following, we'll take a deeper look at the mutations in our sample app, w
 
 Let's walk through the different methods and understand what information we have to provide so that Relay can successfully merge the newly created Pokemon into its store.
 
-The first two methods, `getMutation()` and `getFragment()` are relatively obvious and can be retrieved directly from the documentation where the API is described.
+The first two methods, `getMutation()` and `getVariables()` are relatively obvious and can be retrieved directly from the documentation where the API is described.
 
 The implementations look as follows:
 
@@ -167,7 +169,7 @@ getConfigs() {
 }
 ```
 
-We first express that we want to _add_ the node using `RANGE_ADD` for the `type` (here are 5 different types in total). 
+We first express that we want to _add_ the node using `RANGE_ADD` for the `type` (there are 5 different types in total). 
 
 Relay internally represents the stored data as a graph, so the remaining information expresses where exactly the new node should be hooked into the existing structure.
 
@@ -264,7 +266,7 @@ getVariables() {
     id: this.props.pokemonId,
   }
 }
-``
+```
 
 Then, in `getFatQuery()`, we need to retrieve the `pokemon` from the mutation payload:
 
@@ -290,4 +292,3 @@ getConfigs() {
   }]
 }
 ```
-
